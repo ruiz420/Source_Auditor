@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ingreso | Auditor PRO</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="loginBody">
+  <main class="loginShell">
+    <section class="loginPanel">
+      <div class="brandCompact">
+        <div class="brandMark">AP</div>
+        <div>
+          <h1>Auditor PRO</h1>
+          <p>Acceso privado</p>
+        </div>
+      </div>
+
+      <form class="loginForm" method="post">
+        <label>
+          Usuario
+          <input name="username" autocomplete="username" required autofocus>
+        </label>
+
+        <label>
+          Clave
+          <input name="password" type="password" autocomplete="current-password" required>
+        </label>
+
+        {% if error %}
+          <div class="loginError">{{ error }}</div>
+        {% endif %}
+
+        <button class="primary" type="submit">Entrar</button>
+      </form>
+    </section>
+  </main>
+</body>
+</html>

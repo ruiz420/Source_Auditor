@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Auditor PRO URLs</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="auditorBody">
+<iframe id="preloadFrame" style="display:none;"></iframe>
+
+<header class="topbar">
+  <div class="topbar-left">
+    <button id="sidebarToggle" class="icon-btn" onclick="toggleSidebar()" aria-label="Mostrar u ocultar panel" title="Mostrar u ocultar panel">&#9776;</button>
+    <div class="brandCompact">
+      <div class="brandMark">AP</div>
+      <div>
+        <h1>Auditor PRO</h1>
+        <p>Validación masiva de fuentes</p>
+      </div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <button class="icon-btn" onclick="toggleMenuDropdown(event)" id="menuHamburgerBtn" title="Configuración y exportes">&#9881;</button>
+  </div>
+  <div id="menuDropdown" class="menu-dropdown">
+    <div class="menu-dropdown-header">Configuración</div>
+    <div class="menu-dropdown-item no-hover">
+      <label class="menu-dropdown-label">Agente de usuario
+        <select id="agentSelect" class="menu-select">
+          <option value="auto">Auto recomendado</option>
+          <option value="chrome">Google Chrome</option>
+          <option value="firefox">Mozilla Firefox</option>
+          <option value="googlebot">Googlebot</option>
+          <option value="mobile">Mobile Safari</option>
+        </select>
+      </label>
+    </div>
+    <div class="menu-dropdown-item no-hover">
+      <label class="menu-dropdown-checkbox-label"><input type="checkbox" id="captureCheck"> Capturar pantalla automática</label>
+    </div>
+    <div class="menu-dropdown-divider"></div>
+    <div class="menu-dropdown-header">Exportación</div>
+    <button class="menu-dropdown-btn" onclick="exportCSV()">Exportar CSV</button>
+    <button class="menu-dropdown-btn" onclick="exportExcel()">Informe Visual Completo (Excel + capturas)</button>
+    <button class="menu-dropdown-btn" onclick="exportExcelSimple()">Informe Visual Ligero</button>
+    <div class="menu-dropdown-divider"></div>
+    <button class="menu-dropdown-btn" onclick="window.location.href='/'">Volver al dashboard</button>
+    <button class="menu-dropdown-btn" onclick="window.location.href='/logout'">Cerrar sesion</button>
+  </div>
+</header>
+
+<div class="layout">
+  <aside id="sidebar" class="sidebar">
+    <label class="fieldLabel" for="input">URLs a revisar</label>
+    <textarea id="input" placeholder="Pega una URL por línea"></textarea>
+
+    <button class="primary" id="auditButton" onclick="auditAll()">Auditar automático</button>
+
+    <div class="summary stickySummary">
+      <span>Progreso</span>
+      <strong id="counter">0 / 0</strong>
+    </div>
+
+    <div class="progressPanel">
+      <div class="progressHeader">
+        <span id="progressText">Listo para auditar</span>
+        <span id="progressPercent">0%</span>
+      </div>
+      <div class="progressTrack"><div id="progressBar"></div></div>
+    </div>
+
+    <ul id="list" aria-label="Listado de URLs"></ul>
+  </aside>
+
+  <main id="viewer">
+    <header id="navBar">
+      <div class="statusBadge" id="statusBadge">Sin datos</div>
+      <div class="urlDetails">
+        <a id="currentUrl" href="#" target="_blank" rel="noopener">Carga una URL para comenzar</a>
+        <div id="redirectInfo">La URL final aparecerá aquí cuando exista redirección.</div>
+        <div id="auditInfo">Código HTTP, título y motivo aparecerán aquí.</div>
+        <div id="captureInfo"></div>
+      </div>
+      <div class="view-selector" id="viewSelector" style="display:none;">
+        <button class="view-tab active" id="tabIframe" onclick="setViewMode('iframe')">Vista en vivo</button>
+        <button class="view-tab" id="tabScreenshot" onclick="setViewMode('screenshot')">Captura</button>
+      </div>
+      <button class="capture-btn" id="manualCaptureBtn" style="display:none;" onclick="takeManualCapture()">Capturar</button>
+    </header>
+
+    <div class="viewer-body">
+      <div class="capture-overlay" id="captureOverlay">
+        <div class="spinner"></div>
+        <h3 style="margin:0;">Capturando pantalla...</h3>
+        <p style="margin:0; font-size:12px; color:#a5b4fc;">Espera hasta 15 segundos</p>
+      </div>
+      <iframe id="frame" title="Vista previa de la URL auditada"></iframe>
+      <div class="screenshot-view" id="screenshotView">
+        <div class="screenshot-placeholder" id="screenshotPlaceholder">
+          <div class="screenshot-placeholder-icon">IMG</div>
+          <h3>Sin captura de pantalla</h3>
+          <p>No se ha generado una captura para esta URL.</p>
+          <button class="capture-btn" onclick="takeManualCapture()">Generar captura</button>
+        </div>
+        <img id="screenshotImage" style="display:none;" alt="Captura de pantalla" />
+      </div>
+    </div>
+
+    <div id="controls">
+      <button class="ok" onclick="mark('valida')">Válida (A)</button>
+      <button class="bad" onclick="mark('invalida')">Inválida (D)</button>
+    </div>
+  </main>
+</div>
+
+<script>
+let currentIndex = 0;
+let urls = [];
+let currentUrl = null;
+let isAuditing = false;
+let currentViewMode = "iframe";
+
+function toggleSidebar() {
+  document.body.classList.toggle("sidebar-collapsed");
+}
+
+if (window.matchMedia("(max-width: 800px)").matches) {
+  document.body.classList.add("sidebar-collapsed");
+}
+
+async function auditAll() {
+  if (isAuditing) return;
+  const text = document.getElementById("input").value;
+  const agent = document.getElementById("agentSelect").value;
+  const capture = document.getElementById("captureCheck").checked;
+  const auditButton = document.getElementById("auditButton");
+  const list = document.getElementById("list");
+
+  setProgress(0, 0, "Preparando auditoría");
+  urls = [];
+  currentUrl = null;
+  list.innerHTML = "";
+  auditButton.disabled = true;
+  isAuditing = true;
+
+  const addResponse = await fetch("/add", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({urls: text, agent, capture})
+  });
+
+  const loaded = await addResponse.json();
+  const total = loaded.total || 0;
+
+  if (total === 0) {
+    setProgress(0, 0, "No hay URLs para auditar");
+    auditButton.disabled = false;
+    isAuditing = false;
+    return;
+  }
+
+  renderPendingList(loaded.urls);
+
+  for (let i = 0; i < total; i++) {
+    setProgress(i, total, "Cargando " + (i + 1) + " de " + total);
+    try {
+      const response = await fetch("/check-one", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({index: i})
+      });
+      const result = await response.json();
+      urls.push(result);
+      updateListItem(i, result);
+      setProgress(i + 1, total, "Completadas " + (i + 1) + " de " + total);
+      if (i === 0) open(0);
+    } catch (error) {
+      const failed = { url: loaded.urls[i], status: "ERROR", reason: "falló la auditoría", final_url: "", request_url: "", redirected: false, http_code: "", title: "", text_length: 0, time: 0, chain: [] };
+      urls.push(failed);
+      updateListItem(i, failed);
+      setProgress(i + 1, total, "Completadas " + (i + 1) + " de " + total);
+    }
+  }
+
+  setProgress(total, total, "Auditoría finalizada");
+  auditButton.disabled = false;
+  isAuditing = false;
+  if (urls.length > 0) open(0);
+}
+
+function renderPendingList(items) {
+  const list = document.getElementById("list");
+  list.innerHTML = "";
+  items.forEach((url, i) => {
+    const li = document.createElement("li");
+    li.dataset.index = i;
+    li.className = "pending";
+    li.onclick = () => { if (urls[i]) open(i); };
+    const urlDiv = document.createElement("div");
+    urlDiv.className = "url-text";
+    urlDiv.textContent = url;
+
+    const statusRow = document.createElement("div");
+    statusRow.className = "status-row";
+    statusRow.innerHTML = '<span class="status-badge-small pending">Pendiente</span>';
+
+    li.appendChild(urlDiv);
+    li.appendChild(statusRow);
+    list.appendChild(li);
+  });
+}
+
+function updateListItem(i, item) {
+  const li = document.querySelector('#list li[data-index="' + i + '"]');
+  if (!li) return;
+  li.innerHTML = "";
+  li.className = item.status === "ERROR" ? "errorItem" : item.status === "DUDOSA" ? "warningItem" : item.redirected ? "redirected" : "validItem";
+
+  const urlDiv = document.createElement("div");
+  urlDiv.className = "url-text";
+  urlDiv.textContent = item.url;
+  li.appendChild(urlDiv);
+
+  const statusRow = document.createElement("div");
+  statusRow.className = "status-row";
+  let badgeClass = item.status === "ERROR" ? "error" : item.status === "DUDOSA" ? "dudosa" : "valida";
+  statusRow.innerHTML = `<span class="status-badge-small ${badgeClass}">${item.status}</span><span class="reason-text" title="${item.reason || ''}">${item.reason || ''}</span>`;
+  li.appendChild(statusRow);
+  li.onclick = () => open(i);
+}
+
+function setProgress(done, total, text) {
+  const percent = total > 0 ? Math.round((done / total) * 100) : 0;
+  document.getElementById("counter").innerText = done + " / " + total;
+  document.getElementById("progressText").innerText = text;
+  document.getElementById("progressPercent").innerText = percent + "%";
+  document.getElementById("progressBar").style.width = percent + "%";
+}
+
+function setViewMode(mode) {
+  currentViewMode = mode;
+  const iframe = document.getElementById("frame");
+  const screenshotView = document.getElementById("screenshotView");
+  document.getElementById("tabIframe").classList.toggle("active", mode === "iframe");
+  document.getElementById("tabScreenshot").classList.toggle("active", mode === "screenshot");
+  iframe.style.display = mode === "iframe" ? "block" : "none";
+  screenshotView.classList.toggle("active", mode === "screenshot");
+}
+
+async function takeManualCapture() {
+  if (currentIndex < 0 || currentIndex >= urls.length) return;
+  const overlay = document.getElementById("captureOverlay");
+  const captureBtn = document.getElementById("manualCaptureBtn");
+  overlay.classList.add("active");
+  captureBtn.disabled = true;
+  try {
+    const response = await fetch("/capture-one-manual", { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({index: currentIndex}) });
+    const result = await response.json();
+    if (result.success) {
+      urls[currentIndex].screenshot = result.screenshot;
+      document.getElementById("captureInfo").innerHTML = formatCapture(result.screenshot);
+      const img = document.getElementById("screenshotImage");
+      img.src = result.screenshot;
+      img.style.display = "block";
+      document.getElementById("screenshotPlaceholder").style.display = "none";
+      setViewMode("screenshot");
+    } else { alert("Error al capturar: " + result.screenshot); }
+  } catch (error) { alert("Error de conexión al capturar."); }
+  finally { overlay.classList.remove("active"); captureBtn.disabled = false; }
+}
+
+function open(i) {
+  currentIndex = i;
+  const item = urls[i];
+  const visibleUrl = item.final_url || item.request_url;
+  const originalHref = item.request_url || item.final_url || item.url;
+  currentUrl = item.url;
+
+  document.getElementById("frame").src = visibleUrl;
+  document.getElementById("currentUrl").innerText = "Original: " + item.url;
+  document.getElementById("currentUrl").href = originalHref;
+  document.getElementById("redirectInfo").innerText = item.redirected ? "Redirección: " + item.final_url : "URL real: " + visibleUrl;
+  document.getElementById("auditInfo").innerText = "HTTP: " + (item.http_code || "N/A") + " | Motivo: " + (item.reason || "sin detalle") + " | Agente: " + (item.agent_label || "N/A") + " | Título: " + (item.title || "sin título");
+  document.getElementById("captureInfo").innerHTML = formatCapture(item.screenshot);
+  document.getElementById("statusBadge").innerText = item.status || "Revisada";
+  document.getElementById("statusBadge").className = item.status === "ERROR" ? "statusBadge error" : item.status === "DUDOSA" ? "statusBadge warning" : "statusBadge okStatus";
+
+  document.getElementById("viewSelector").style.display = "flex";
+  document.getElementById("manualCaptureBtn").style.display = "flex";
+
+  const screenshotImg = document.getElementById("screenshotImage");
+  const screenshotPlaceholder = document.getElementById("screenshotPlaceholder");
+  if (item.screenshot && item.screenshot.startsWith("/static/")) {
+    screenshotImg.src = item.screenshot;
+    screenshotImg.style.display = "block";
+    screenshotPlaceholder.style.display = "none";
+  } else {
+    screenshotImg.src = "";
+    screenshotImg.style.display = "none";
+    screenshotPlaceholder.style.display = "flex";
+  }
+
+  setViewMode(currentViewMode);
+  document.querySelectorAll("#list li").forEach(li => li.classList.toggle("active", Number(li.dataset.index) === i));
+  document.getElementById("counter").innerText = (i + 1) + " / " + urls.length;
+}
+
+function formatCapture(value) { return !value ? "" : value.startsWith("/static/") ? '<a href="' + value + '" target="_blank" rel="noopener">Ver captura</a>' : "Captura: " + value; }
+function next() { if (urls.length) open((currentIndex + 1) % urls.length); }
+async function mark(status) { if (!currentUrl) return; await fetch("/mark", { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({url: currentUrl, status}) }); next(); }
+function exportCSV() { window.location.href = "/export"; }
+function exportExcel() { window.location.href = "/export-excel"; }
+function exportExcelSimple() { window.location.href = "/export-simple"; }
+
+function toggleMenuDropdown(event) {
+  event.stopPropagation();
+  document.getElementById("menuDropdown").classList.toggle("active");
+  document.getElementById("menuHamburgerBtn").classList.toggle("active");
+}
+
+document.addEventListener("click", function(event) {
+  const dropdown = document.getElementById("menuDropdown");
+  const btn = document.getElementById("menuHamburgerBtn");
+  if (dropdown.classList.contains("active") && !dropdown.contains(event.target) && event.target !== btn) {
+    dropdown.classList.remove("active");
+    btn.classList.remove("active");
+  }
+});
+
+document.addEventListener("keydown", e => {
+  if (e.key === "a") mark("valida");
+  if (e.key === "d") mark("invalida");
+  if (e.key === "ArrowRight") next();
+});
+</script>
+</body>
+</html>
