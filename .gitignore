@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+.vscode/
+url-checker-web/
+venv/
+.venv/
+env/
+auditoria_final.csv
+auditoria_final.xlsx
+auditoria_imagenes.xlsx
+resultados.csv
+static/screenshots/*.png
+usuarios.txt

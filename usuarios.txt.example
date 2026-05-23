@@ -1,0 +1,7 @@
+# Copia este archivo como usuarios.txt para activar acceso por archivo.
+# Formato:
+# usuario:clave
+#
+# Ejemplo:
+admin:cambia-esta-clave
+martin:otra-clave-segura

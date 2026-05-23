@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Punto Cardinal | Dashboard</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="dashboardBody">
+
+<header class="dashboardTopbar">
+  <div class="brand">
+    <div class="brandMark">PC</div>
+    <div>
+      <h1>Punto Cardinal</h1>
+      <p>Panel operativo de Martin Ruiz</p>
+    </div>
+  </div>
+  <div class="operatorBadge">Martin Ruiz</div>
+</header>
+
+<main class="dashboardMain">
+  <section class="welcome">
+    <div>
+      <span class="eyebrow">Centro de control</span>
+      <h2>Bienvenido, Martin Ruiz</h2>
+      <p>
+        Gestiona herramientas internas, auditorias y nuevas funciones desde un solo lugar.
+      </p>
+    </div>
+    <a class="heroAction" href="/auditor">Abrir auditor de fuentes</a>
+  </section>
+
+  <section class="moduleGrid" aria-label="Modulos disponibles">
+    <a class="moduleCard activeModule" href="/auditor">
+      <div class="moduleIcon">URL</div>
+      <div>
+        <h3>Auditor de fuentes</h3>
+        <p>Valida URLs, redirecciones, estado HTTP y exporta resultados en CSV.</p>
+      </div>
+      <span>Disponible</span>
+    </a>
+
+    <article class="moduleCard disabledModule">
+      <div class="moduleIcon">CSV</div>
+      <div>
+        <h3>Analisis de archivos</h3>
+        <p>Espacio reservado para procesar, limpiar y comparar listas masivas.</p>
+      </div>
+      <span>Proximamente</span>
+    </article>
+
+    <article class="moduleCard disabledModule">
+      <div class="moduleIcon">REP</div>
+      <div>
+        <h3>Reportes ejecutivos</h3>
+        <p>Panel futuro para graficas, resumenes y entregables de auditoria.</p>
+      </div>
+      <span>Proximamente</span>
+    </article>
+
+    <article class="moduleCard disabledModule">
+      <div class="moduleIcon">API</div>
+      <div>
+        <h3>Integraciones</h3>
+        <p>Conecta fuentes externas, automatizaciones o servicios de validacion.</p>
+      </div>
+      <span>Proximamente</span>
+    </article>
+  </section>
+</main>
+
+</body>
+</html>

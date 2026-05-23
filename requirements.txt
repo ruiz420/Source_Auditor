@@ -1,0 +1,8 @@
+flask
+requests
+playwright
+pillow
+openpyxl
+openpyxl
+Pillow
+gunicorn

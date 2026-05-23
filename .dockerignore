@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+.git/
+.vscode/
+url-checker-web/
+venv/
+.venv/
+env/
+*.csv
+*.xlsx
+static/screenshots/*.png

@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: auditor-fuentes
+    env: docker
+    plan: free
+    autoDeploy: true
